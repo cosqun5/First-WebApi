@@ -54,10 +54,7 @@ namespace WebApiAdvance.Core.DAL.Repositories.Concrates.EfCore
 			return await _dbSet.AnyAsync(filter);
 		}
 
-		public async Task SaveAsync()
-		{
-			await _context.SaveChangesAsync();
-		}
+
 
 		public void Delete(TEntity product)
 		{
@@ -74,7 +71,7 @@ namespace WebApiAdvance.Core.DAL.Repositories.Concrates.EfCore
 			IQueryable<TEntity> query = _dbSet;
 			foreach (var item in includes)
 			{
-				query.Include(item);
+				query=query.Include(item);
 			}
 
 			return query;

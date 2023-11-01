@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using WebApiAdvance.DAL.EfCore;
 using WebApiAdvance.DAL.Repositories.Abstracts;
+using WebApiAdvance.DAL.UnitOfWork.Abstracts;
 using WebApiAdvance.Entities;
 using WebApiAdvance.Entities.Dtos;
 
@@ -18,24 +19,24 @@ namespace WebApiAdvance.Controllers
     [ApiController]
     public class ProductsController : ControllerBase
     {
-        private readonly IProductRepository _repository;
+        private readonly IUnitOfWork _unitOfWork;
         private readonly IMapper _mapper;
 
-		public ProductsController(IProductRepository repository, IMapper mapper)
+		public ProductsController(IMapper mapper, IUnitOfWork unitOfWork)
 		{
-            _repository = repository;
 			_mapper = mapper;
+			_unitOfWork = unitOfWork;
 		}
 
 		// GET: api/Products
 		[HttpGet]
         public async Task<ActionResult<IEnumerable<GetProductDto>>> GetProducts()
         {
-          if (await _repository.GetAllAsync() == null)
+          if (await _unitOfWork.ProductRepository.GetAllAsync() == null)
           {
               return NotFound();
           }
-          var result = await _repository.GetAllAsync();
+          var result = await _unitOfWork.ProductRepository.GetAllAsync();
             List<GetProductDto> getProductDtos = _mapper.Map<List<GetProductDto>>(result);
             return getProductDtos;
         }
@@ -44,11 +45,11 @@ namespace WebApiAdvance.Controllers
         [HttpGet("{id}")]
         public async Task<ActionResult<GetProductDto>> GetProduct(int id)
         {
-          if (await _repository.GetAllAsync() == null)
+          if (await _unitOfWork.ProductRepository.GetAllAsync() == null)
           {
               return NotFound();
           }
-            var product = await _repository.GetAsync(p=>p.Id==id);
+            var product = await _unitOfWork.ProductRepository.GetAsync(p=>p.Id==id);
 
             if (product == null)
             {
@@ -70,8 +71,8 @@ namespace WebApiAdvance.Controllers
 
             }
           Product product = _mapper.Map<Product>(productdto);
-             _repository.Update(product);
-            await _repository.SaveAsync();
+             _unitOfWork.ProductRepository.Update(product);
+            await _unitOfWork.SaveAsync();
             return NoContent();
         }
 
@@ -83,8 +84,8 @@ namespace WebApiAdvance.Controllers
         {
           Product product = _mapper.Map<Product>(productdto);
             product.Created = DateTime.UtcNow;
-            await _repository.AddAsync(product);
-            await _repository.SaveAsync();
+            await _unitOfWork.ProductRepository.AddAsync(product);
+            await _unitOfWork.SaveAsync();
             return NoContent();
         }
 
@@ -92,25 +93,25 @@ namespace WebApiAdvance.Controllers
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteProduct(int id)
         {
-            if (await _repository.GetAllAsync() == null)
+            if (await _unitOfWork.ProductRepository.GetAllAsync() == null)
             {
                 return NotFound();
             }
-            var product = await _repository.GetAsync(p=>p.Id==id);
+            var product = await _unitOfWork.ProductRepository.GetAsync(p=>p.Id==id);
             if (product == null)
             {
                 return NotFound();
             }
 
-            _repository.Delete(product);
-            await _repository.SaveAsync();
+            _unitOfWork.ProductRepository.Delete(product);
+            await _unitOfWork.SaveAsync();
 
             return NoContent();
         }
 
         private async Task< bool> ProductExists(int id)
         {
-            return await _repository.IsExistsAsync(p=>p.Id==id);
+            return await _unitOfWork.ProductRepository.IsExistsAsync(p=>p.Id==id);
         }
     }
 }

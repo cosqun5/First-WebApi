@@ -13,6 +13,5 @@ namespace WebApiAdvance.Core.DAL.Repositories.Abstracts
 		Task AddAsync(T entity);
 		void Update(T entity);
 		void Delete(T entity);
-		Task SaveAsync();
 	}
 }

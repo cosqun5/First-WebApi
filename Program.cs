@@ -3,11 +3,14 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi.Models;
 using System.Reflection;
 using System.Text;
 using WebApiAdvance.DAL.EfCore;
 using WebApiAdvance.DAL.Repositories.Abstracts;
 using WebApiAdvance.DAL.Repositories.Concretes.EfCore;
+using WebApiAdvance.DAL.UnitOfWork.Abstracts;
+using WebApiAdvance.DAL.UnitOfWork.Cocretes;
 using WebApiAdvance.Entities.Auth;
 
 namespace WebApiAdvance
@@ -19,55 +22,54 @@ namespace WebApiAdvance
 			var builder = WebApplication.CreateBuilder(args);
 
 			// Add services to the container.
-			TokenOption tokenOption = builder.Configuration.GetSection("TokenOptions").Get<TokenOption>();
+
 
 
 			//Validationslar tetbiq edilende yazilmlidir
-			builder.Services.AddControllers().AddFluentValidation(opt =>
+			builder.Services.AddControllers()
+				.AddFluentValidation(opt =>
 			{
 				opt.ImplicitlyValidateChildProperties = true;
-				opt.ImplicitlyValidateRootCollectionElements= true;
+				opt.ImplicitlyValidateRootCollectionElements = true;
 				opt.RegisterValidatorsFromAssembly(Assembly.GetExecutingAssembly());
 
-			});
+			})
+				//newtonsoft yuklemek lazimdir.
+				.AddNewtonsoftJson(option => option.SerializerSettings.ReferenceLoopHandling = Newtonsoft.Json.ReferenceLoopHandling.Ignore); ;
 
 			// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 			builder.Services.AddEndpointsApiExplorer();
 			builder.Services.AddSwaggerGen();
-			builder.Services.AddDbContext<AppDbContext>(opt =>
+			builder.Services.AddSwaggerGen(option =>
 			{
-				opt.UseSqlServer(builder.Configuration["ConnectionStrings:Default"]);
-			});
-			builder.Services.AddAutoMapper(Assembly.GetExecutingAssembly());
-
-
-			// Register and Login istifade edilende yazilmalidir
-			builder.Services.AddIdentity<AppUser,IdentityRole>()
-				.AddEntityFrameworkStores<AppDbContext>()
-				.AddDefaultTokenProviders();
-			builder.Services.AddAuthentication(opt =>
-			{
-				//bearer kitabxanasini yuklemek lazimdir.
-				opt.DefaultScheme = JwtBearerDefaults.AuthenticationScheme;
-				opt.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
-				opt.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-			}).AddJwtBearer(opt =>
-			{
-				opt.TokenValidationParameters = new TokenValidationParameters
+				option.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
 				{
-					ValidateAudience = true,
-					ValidateIssuer = true,
-					ValidateLifetime= true,
-					ValidateIssuerSigningKey = true,
-					ValidIssuer=tokenOption.Issuer,
-					ValidAudience=tokenOption.Audience,
-					IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(tokenOption.SecurityKey))
-
-
-			};
+					In = ParameterLocation.Header,
+					Description = "Please enter a valid token",
+					Name = "Authorization",
+					Type = SecuritySchemeType.ApiKey,
+					BearerFormat = "JWT",
+					Scheme = "Bearer"
+				});
+				option.AddSecurityRequirement(new OpenApiSecurityRequirement
+	{
+		{
+			new OpenApiSecurityScheme
+			{
+				Reference = new OpenApiReference
+				{
+					Type=ReferenceType.SecurityScheme,
+					Id="Bearer"
+				}
+			},
+			new string[]{}
+		}
+	});
 			});
 
-			builder.Services.AddScoped<IProductRepository,EfProductRepository>();
+			//service Extentions program.cs icerisi dolmasin deye elave extentions yaradib orda yaziriq kodlari
+			builder.Services.AddApiConfiguration(builder.Configuration);
+
 			var app = builder.Build();
 
 
